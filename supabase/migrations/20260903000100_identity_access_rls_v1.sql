@@ -1,0 +1,13 @@
+alter table public.profiles enable row level security;
+alter table public.organizations enable row level security;
+alter table public.organization_memberships enable row level security;
+alter table public.sites enable row level security;
+alter table public.site_memberships enable row level security;
+alter table public.organization_site_grants enable row level security;
+alter table public.invitations enable row level security;
+alter table public.access_requests enable row level security;
+alter table public.audit_events enable row level security;
+revoke all on public.invitations, public.audit_events from anon, authenticated;
+create policy profiles_self_select on public.profiles for select to authenticated using (id = (select auth.uid()));
+create policy profiles_pending_self_insert on public.profiles for insert to authenticated with check (id = (select auth.uid()) and persona is null and account_status = 'pending');
+create policy access_requests_self on public.access_requests for all to authenticated using (profile_id = (select auth.uid())) with check (profile_id = (select auth.uid()));

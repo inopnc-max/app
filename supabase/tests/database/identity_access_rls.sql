@@ -1,4 +1,4 @@
--- Executed only by `supabase test db` against the local database.
+﻿-- Executed only by `supabase test db` against the local database.
 begin;
 select plan(64);
 select has_table('profiles');
@@ -75,7 +75,7 @@ select is((select private.current_profile_active('00000000-0000-0000-0000-000000
 select is((select private.can_access_site('10000000-0000-0000-0000-000000000001')),true,'site helper assigned');
 select is((select private.can_access_site('10000000-0000-0000-0000-000000000002')),false,'site helper unrelated');
 select is((select private.can_access_site('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001')),false,'site helper arbitrary uid bounded');
-select is((select private.is_admin_aal2()),false,'aal2 admin gate denied');
+select is((select private.is_admin_aal2_self()),false,'aal2 admin gate denied');
 select is((select count(*) from sites),1::bigint,'site row isolation');
 select is((select count(*) from site_memberships where profile_id <> auth.uid()),0::bigint,'membership row isolation');
 select is((select count(*) from access_requests),0::bigint,'request cross-user isolation');

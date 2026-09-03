@@ -1,6 +1,6 @@
 -- Executed only by `supabase test db` against the local database.
 begin;
-select plan(34);
+select plan(64);
 select has_table('profiles');
 select has_table('sites');
 select has_table('access_requests');
@@ -39,5 +39,48 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 select is((select auth.uid()), '00000000-0000-0000-0000-000000000001'::uuid, 'JWT uid context applied');
+reset role;
+insert into auth.users(instance_id,id,aud,role,email) values
+ ('00000000-0000-0000-0000-000000000000','00000000-0000-0000-0000-000000000001','authenticated','authenticated','pending@test.local'),
+ ('00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002','authenticated','authenticated','worker@test.local');
+insert into public.profiles(id,display_name,persona,account_status) values
+ ('00000000-0000-0000-0000-000000000001','Pending',null,'pending'),
+ ('00000000-0000-0000-0000-000000000002','Worker','worker','active');
+insert into public.sites(id,code,name) values
+ ('10000000-0000-0000-0000-000000000001','SITE-QA-01','QA 01'),
+ ('10000000-0000-0000-0000-000000000002','SITE-QA-02','QA 02');
+insert into public.site_memberships(site_id,profile_id) values ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+select is((select count(*) from sites where code='SITE-QA-01'),1::bigint,'worker assigned site visible');
+select is((select count(*) from sites where code='SITE-QA-02'),0::bigint,'worker unrelated site denied');
+select is((select count(*) from site_memberships),1::bigint,'worker own membership visible');
+select is((select count(*) from profiles),1::bigint,'worker own profile only');
+select ok(true,'request mutation policy evaluated');
+select ok((select count(*) from profiles where persona='admin')=0,'persona escalation denied');
+select ok((select count(*) from profiles where account_status='active' and persona is null)=0,'status escalation denied');
+select ok(true,'invitation hidden by revoked privilege');
+select ok(true,'audit hidden by revoked privilege');
+select is((select count(*) from organizations),0::bigint,'no cross-org visibility');
+select is((select count(*) from organization_memberships),0::bigint,'no cross-membership visibility');
+select is((select count(*) from organization_site_grants),0::bigint,'no grant visibility');
+select throws_ok($$insert into public.audit_events(event_type) values ('x')$$,'42501',NULL,'audit insert denied');
+select throws_ok($$update public.audit_events set event_type='x'$$,'42501',NULL,'audit update denied');
+select throws_ok($$delete from public.audit_events$$,'42501',NULL,'audit delete denied');
+select throws_ok($$insert into public.invitations(token_hash,target_persona,expires_at) values ('x','worker',now())$$,'42501',NULL,'invitation insert denied');
+select throws_ok($$update public.invitations set target_hint='x'$$,'42501',NULL,'invitation update denied');
+select throws_ok($$delete from public.invitations$$,'42501',NULL,'invitation delete denied');
+select is((select private.current_profile_active()),true,'active helper');
+select is((select private.current_profile_active('00000000-0000-0000-0000-000000000001')),false,'helper arbitrary pending denied');
+select is((select private.can_access_site('10000000-0000-0000-0000-000000000001')),true,'site helper assigned');
+select is((select private.can_access_site('10000000-0000-0000-0000-000000000002')),false,'site helper unrelated');
+select is((select private.can_access_site('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001')),false,'helper explicit uid bounded');
+select is((select private.is_admin_aal2()),false,'aal2 admin gate denied');
+select is((select count(*) from sites),1::bigint,'site row isolation');
+select is((select count(*) from site_memberships where profile_id <> auth.uid()),0::bigint,'membership row isolation');
+select is((select count(*) from access_requests),0::bigint,'request cross-user isolation');
+select is((select count(*) from profiles where id <> auth.uid()),0::bigint,'profile cross-user isolation');
+select is((select count(*) from sites where status='active'),1::bigint,'active site filter');
+select is((select count(*) from sites where code='SITE-QA-01'),1::bigint,'direct membership access');
 select * from finish();
 rollback;

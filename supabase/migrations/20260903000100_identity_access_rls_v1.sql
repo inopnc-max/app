@@ -4,6 +4,8 @@ create or replace function private.is_admin_aal2(uid uuid default auth.uid()) re
 create or replace function private.can_access_site(sid uuid, uid uuid default auth.uid()) returns boolean language sql stable security definer set search_path = '' as $$ select private.current_profile_active(uid) and exists (select 1 from public.sites s join public.site_memberships m on m.site_id=s.id where s.id=sid and s.status='active' and m.profile_id=uid and m.status='active') or private.current_profile_active(uid) and exists (select 1 from public.sites s join public.organization_site_grants g on g.site_id=s.id join public.organization_memberships m on m.organization_id=g.organization_id join public.organizations o on o.id=g.organization_id where s.id=sid and s.status='active' and g.status='active' and m.profile_id=uid and m.status='active' and o.type='partner' and o.status='active') $$;
 create or replace function private.can_view_org(oid uuid, uid uuid default auth.uid()) returns boolean language sql stable security definer set search_path = '' as $$ select private.current_profile_active(uid) and exists (select 1 from public.organization_memberships m join public.organizations o on o.id=m.organization_id where m.organization_id=oid and m.profile_id=uid and m.status='active' and o.status='active') $$;
 revoke all on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) from public, anon, authenticated;
+grant usage on schema private to authenticated;
+grant execute on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) to authenticated;
 alter table public.profiles enable row level security;
 alter table public.organizations enable row level security;
 alter table public.organization_memberships enable row level security;
@@ -21,7 +23,7 @@ create policy memberships_visible on public.organization_memberships for select 
 create policy memberships_admin_manage on public.organization_memberships for all to authenticated using (private.is_admin_aal2()) with check (private.is_admin_aal2());
 create policy sites_visible on public.sites for select to authenticated using (private.can_access_site(id));
 create policy sites_admin_manage on public.sites for all to authenticated using (private.is_admin_aal2()) with check (private.is_admin_aal2());
-create policy site_memberships_visible on public.site_memberships for select to authenticated using (profile_id=auth.uid() or private.can_access_site(site_id));
+create policy site_memberships_visible on public.site_memberships for select to authenticated using (profile_id=auth.uid() or private.is_admin_aal2());
 create policy site_memberships_admin_manage on public.site_memberships for all to authenticated using (private.is_admin_aal2()) with check (private.is_admin_aal2());
 create policy grants_partner_visible on public.organization_site_grants for select to authenticated using (private.can_view_org(organization_id));
 create policy grants_admin_manage on public.organization_site_grants for all to authenticated using (private.is_admin_aal2()) with check (private.is_admin_aal2());

@@ -1,6 +1,6 @@
 -- Executed only by `supabase test db` against the local database.
 begin;
-select plan(32);
+select plan(34);
 select has_table('profiles');
 select has_table('sites');
 select has_table('access_requests');
@@ -33,5 +33,11 @@ select ok((select prosecdef from pg_proc where proname='can_access_site' and pro
 select ok((select prosecdef from pg_proc where proname='can_view_org' and pronamespace='private'::regnamespace), 'org helper security definer');
 select ok((select proconfig is not null from pg_proc where proname='can_access_site' and pronamespace='private'::regnamespace), 'helper search path locked');
 select ok((select count(*) from pg_policies where schemaname='public' and 'authenticated' = any(roles)) > 0, 'authenticated policies');
+set local role anon;
+select is((select count(*) from public.sites), 0::bigint, 'anon cannot read sites');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+select is((select auth.uid()), '00000000-0000-0000-0000-000000000001'::uuid, 'JWT uid context applied');
 select * from finish();
 rollback;

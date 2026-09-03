@@ -1,0 +1,18 @@
+create type public.resource_status as enum ('active','inactive');
+create type public.access_request_status as enum ('pending','approved','rejected');
+alter table public.organizations alter column status drop default, alter column status type public.resource_status using status::public.resource_status, alter column status set default 'active';
+alter table public.organization_memberships alter column status drop default, alter column status type public.resource_status using status::public.resource_status, alter column status set default 'active';
+alter table public.sites alter column status drop default, alter column status type public.resource_status using status::public.resource_status, alter column status set default 'active';
+alter table public.site_memberships alter column status drop default, alter column status type public.resource_status using status::public.resource_status, alter column status set default 'active';
+alter table public.organization_site_grants add column granted_by uuid references public.profiles(id) on delete set null, add column granted_at timestamptz not null default now(), add column created_at timestamptz not null default now(), add column updated_at timestamptz not null default now(), alter column status drop default, alter column status type public.resource_status using status::public.resource_status, alter column status set default 'active';
+alter table public.invitations add column target_hint text, add column accepted_by uuid references public.profiles(id) on delete set null, alter column created_by drop not null, drop constraint invitations_created_by_fkey, add constraint invitations_created_by_fkey foreign key (created_by) references public.profiles(id) on delete set null, add constraint invitations_state_check check (accepted_at is null or revoked_at is null);
+alter table public.access_requests alter column profile_id set not null, add column reviewed_by uuid references public.profiles(id) on delete set null, add column reviewed_at timestamptz, add column rejection_reason text, add column updated_at timestamptz not null default now(), alter column status drop default, alter column status type public.access_request_status using status::public.access_request_status, alter column status set default 'pending';
+create unique index access_requests_pending_profile_uidx on public.access_requests(profile_id) where status = 'pending';
+create or replace function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
+create trigger profiles_updated_at before update on public.profiles for each row execute function public.set_updated_at();
+create trigger organizations_updated_at before update on public.organizations for each row execute function public.set_updated_at();
+create trigger organization_memberships_updated_at before update on public.organization_memberships for each row execute function public.set_updated_at();
+create trigger sites_updated_at before update on public.sites for each row execute function public.set_updated_at();
+create trigger site_memberships_updated_at before update on public.site_memberships for each row execute function public.set_updated_at();
+create trigger grants_updated_at before update on public.organization_site_grants for each row execute function public.set_updated_at();
+create trigger access_requests_updated_at before update on public.access_requests for each row execute function public.set_updated_at();

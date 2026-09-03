@@ -10,4 +10,7 @@ alter table public.audit_events enable row level security;
 revoke all on public.invitations, public.audit_events from anon, authenticated;
 create policy profiles_self_select on public.profiles for select to authenticated using (id = (select auth.uid()));
 create policy profiles_pending_self_insert on public.profiles for insert to authenticated with check (id = (select auth.uid()) and persona is null and account_status = 'pending');
-create policy access_requests_self on public.access_requests for all to authenticated using (profile_id = (select auth.uid())) with check (profile_id = (select auth.uid()));
+create policy access_requests_self_select on public.access_requests for select to authenticated using (profile_id = (select auth.uid()));
+create policy access_requests_self_insert on public.access_requests for insert to authenticated with check (profile_id = (select auth.uid()) and status = 'pending' and reviewed_by is null and reviewed_at is null and rejection_reason is null);
+create policy access_requests_no_update on public.access_requests for update to authenticated using (false) with check (false);
+create policy access_requests_no_delete on public.access_requests for delete to authenticated using (false);

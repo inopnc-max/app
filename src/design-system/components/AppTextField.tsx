@@ -1,0 +1,1 @@
+export function AppTextField({label,placeholder}:{label:string;placeholder?:string}){return <label style={{display:'grid',gap:8}}>{label}<input placeholder={placeholder} style={{minHeight:44,border:'1px solid var(--color-border)',borderRadius:6,padding:'0 12px'}} /></label>}

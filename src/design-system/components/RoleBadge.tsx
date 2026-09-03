@@ -1,0 +1,1 @@
+export function RoleBadge({children}:{children:React.ReactNode}){return <span style={{display:'inline-flex',alignItems:'center',minHeight:28,padding:'0 10px',borderRadius:14,background:'var(--role-secondary)',color:'var(--role-primary)',fontSize:13,fontWeight:700}}>{children}</span>}

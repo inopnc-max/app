@@ -7,6 +7,12 @@ create or replace function private.can_access_site_self(sid uuid) returns boolea
 create or replace function private.can_view_org_self(oid uuid) returns boolean language sql stable security definer set search_path='' as $$ select private.current_profile_active_self() and exists (select 1 from public.organization_memberships m join public.organizations o on o.id=m.organization_id where m.organization_id=oid and m.profile_id=auth.uid() and m.status='active' and o.status='active') $$;
 create or replace function private.can_view_partner_org_self(oid uuid) returns boolean language sql stable security definer set search_path='' as $$ select private.can_view_org_self(oid) and exists (select 1 from public.organizations o where o.id=oid and o.type='partner') $$;
 revoke all on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) from public, anon, authenticated;
+drop policy if exists memberships_visible on public.organization_memberships;
+create policy memberships_visible on public.organization_memberships for select to authenticated using (profile_id=auth.uid() or private.is_admin_aal2_self());
+drop policy if exists site_memberships_visible on public.site_memberships;
+create policy site_memberships_visible on public.site_memberships for select to authenticated using (profile_id=auth.uid() or private.is_admin_aal2_self());
+drop policy if exists access_requests_admin_delete on public.access_requests;
+create policy access_requests_admin_delete on public.access_requests for delete to authenticated using (private.is_admin_aal2_self());
 revoke all on function private.current_profile_active_self(), private.is_admin_aal2_self(), private.can_access_site_self(uuid), private.can_view_org_self(uuid), private.can_view_partner_org_self(uuid) from public, anon;
 grant usage on schema private to authenticated;
 grant execute on function private.current_profile_active_self(), private.is_admin_aal2_self(), private.can_access_site_self(uuid), private.can_view_org_self(uuid), private.can_view_partner_org_self(uuid) to authenticated;

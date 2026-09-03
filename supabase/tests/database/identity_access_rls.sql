@@ -1,4 +1,6 @@
 ﻿-- Executed only by `supabase test db` against the local database.
+create extension if not exists pgtap with schema extensions;
+set search_path = extensions, public, pg_catalog;
 begin;
 select plan(64);
 select has_table('profiles');
@@ -56,11 +58,11 @@ select is((select count(*) from sites where code='SITE-QA-01'),1::bigint,'worker
 select is((select count(*) from sites where code='SITE-QA-02'),0::bigint,'worker unrelated site denied');
 select is((select count(*) from site_memberships),1::bigint,'worker own membership visible');
 select is((select count(*) from profiles),1::bigint,'worker own profile only');
-select ok(true,'request mutation policy evaluated');
+select is((select count(*) from access_requests),0::bigint,'request policy denies invalid mutation');
 select ok((select count(*) from profiles where persona='admin')=0,'persona escalation denied');
 select ok((select count(*) from profiles where account_status='active' and persona is null)=0,'status escalation denied');
-select ok(true,'invitation hidden by revoked privilege');
-select ok(true,'audit hidden by revoked privilege');
+select is((select count(*) from invitations),0::bigint,'invitation hidden by RLS');
+select is((select count(*) from audit_events),0::bigint,'audit hidden by RLS');
 select is((select count(*) from organizations),0::bigint,'no cross-org visibility');
 select is((select count(*) from organization_memberships),0::bigint,'no cross-membership visibility');
 select is((select count(*) from organization_site_grants),0::bigint,'no grant visibility');
@@ -70,11 +72,11 @@ select is((select count(*) from public.audit_events),0::bigint,'audit immutable 
 select throws_ok($$insert into public.invitations(token_hash,target_persona,expires_at) values ('x','worker',now())$$,'42501',NULL,'invitation insert denied');
 select is((select count(*) from public.invitations),0::bigint,'invitation update has no visible rows');
 select is((select count(*) from public.invitations),0::bigint,'invitation delete has no visible rows');
-select is((select private.current_profile_active()),true,'active helper');
-select is((select private.current_profile_active('00000000-0000-0000-0000-000000000001')),false,'helper arbitrary uid bounded');
-select is((select private.can_access_site('10000000-0000-0000-0000-000000000001')),true,'site helper assigned');
-select is((select private.can_access_site('10000000-0000-0000-0000-000000000002')),false,'site helper unrelated');
-select is((select private.can_access_site('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001')),false,'site helper arbitrary uid bounded');
+select is((select private.current_profile_active_self()),true,'active helper');
+select ok(not has_function_privilege('authenticated','private.current_profile_active(uuid)','execute'),'legacy helper denied');
+select is((select private.can_access_site_self('10000000-0000-0000-0000-000000000001')),true,'site helper assigned');
+select is((select private.can_access_site_self('10000000-0000-0000-0000-000000000002')),false,'site helper unrelated');
+select ok(not has_function_privilege('authenticated','private.can_access_site(uuid,uuid)','execute'),'legacy site helper denied');
 select is((select private.is_admin_aal2_self()),false,'aal2 admin gate denied');
 select is((select count(*) from sites),1::bigint,'site row isolation');
 select is((select count(*) from site_memberships where profile_id <> auth.uid()),0::bigint,'membership row isolation');

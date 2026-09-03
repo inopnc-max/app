@@ -1,3 +1,5 @@
+create extension if not exists pgtap with schema extensions;
+set search_path = extensions, public, pg_catalog;
 begin;
 select plan(6);
 select has_function('private','current_profile_active_self', ARRAY[]::text[]);

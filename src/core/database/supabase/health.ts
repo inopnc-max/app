@@ -13,9 +13,9 @@ export async function checkSupabaseHealth(): Promise<SupabaseHealth> {
   const client = createClient();
   if (!client) return {envValid:true, clientCreated:false, endpointReachable:false};
   try {
-    const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
+    const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/health`, {
       method:'GET', headers:{apikey:env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}, cache:'no-store'
     });
-    return {envValid:true, clientCreated:true, endpointReachable:response.status < 500};
+    return {envValid:true, clientCreated:true, endpointReachable:response.status === 200};
   } catch { return {envValid:true, clientCreated:true, endpointReachable:false}; }
 }

@@ -1,5 +1,39 @@
--- Additive privilege alignment: RLS remains the authorization boundary.
+﻿-- Additive privilege alignment: RLS remains the authorization boundary.
 grant select, insert, update, delete on public.invitations, public.audit_events to authenticated;
+
+create or replace function private.current_profile_active_self() returns boolean language sql stable security definer set search_path='' as $$ select exists (select 1 from public.profiles p where p.id=auth.uid() and p.account_status='active') $$;
+create or replace function private.is_admin_aal2_self() returns boolean language sql stable security definer set search_path='' as $$ select exists (select 1 from public.profiles p where p.id=auth.uid() and p.persona='admin' and p.account_status='active') and coalesce(auth.jwt()->>'aal','')='aal2' $$;
+create or replace function private.can_access_site_self(sid uuid) returns boolean language sql stable security definer set search_path='' as $$ select private.current_profile_active_self() and exists (select 1 from public.sites s join public.site_memberships m on m.site_id=s.id where s.id=sid and s.status='active' and m.profile_id=auth.uid() and m.status='active') or private.current_profile_active_self() and exists (select 1 from public.sites s join public.organization_site_grants g on g.site_id=s.id join public.organization_memberships m on m.organization_id=g.organization_id join public.organizations o on o.id=g.organization_id where s.id=sid and s.status='active' and g.status='active' and m.profile_id=auth.uid() and m.status='active' and o.type='partner' and o.status='active') $$;
+create or replace function private.can_view_org_self(oid uuid) returns boolean language sql stable security definer set search_path='' as $$ select private.current_profile_active_self() and exists (select 1 from public.organization_memberships m join public.organizations o on o.id=m.organization_id where m.organization_id=oid and m.profile_id=auth.uid() and m.status='active' and o.status='active') $$;
+create or replace function private.can_view_partner_org_self(oid uuid) returns boolean language sql stable security definer set search_path='' as $$ select private.can_view_org_self(oid) and exists (select 1 from public.organizations o where o.id=oid and o.type='partner') $$;
 revoke all on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) from public, anon, authenticated;
+revoke all on function private.current_profile_active_self(), private.is_admin_aal2_self(), private.can_access_site_self(uuid), private.can_view_org_self(uuid), private.can_view_partner_org_self(uuid) from public, anon;
 grant usage on schema private to authenticated;
-grant execute on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) to authenticated;
+grant execute on function private.current_profile_active_self(), private.is_admin_aal2_self(), private.can_access_site_self(uuid), private.can_view_org_self(uuid), private.can_view_partner_org_self(uuid) to authenticated;
+drop policy if exists organizations_visible on public.organizations;
+create policy organizations_visible on public.organizations for select to authenticated using (private.can_view_org_self(id));
+drop policy if exists sites_visible on public.sites;
+create policy sites_visible on public.sites for select to authenticated using (private.can_access_site_self(id));
+drop policy if exists grants_partner_visible on public.organization_site_grants;
+create policy grants_partner_visible on public.organization_site_grants for select to authenticated using (private.can_view_partner_org_self(organization_id));
+drop policy if exists organizations_admin_manage on public.organizations;
+create policy organizations_admin_manage on public.organizations for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists memberships_admin_manage on public.organization_memberships;
+create policy memberships_admin_manage on public.organization_memberships for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists sites_admin_manage on public.sites;
+create policy sites_admin_manage on public.sites for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists site_memberships_admin_manage on public.site_memberships;
+create policy site_memberships_admin_manage on public.site_memberships for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists grants_admin_manage on public.organization_site_grants;
+create policy grants_admin_manage on public.organization_site_grants for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists access_requests_self_select on public.access_requests;
+create policy access_requests_self_select on public.access_requests for select to authenticated using (profile_id=auth.uid() or private.is_admin_aal2_self());
+drop policy if exists access_requests_admin_update on public.access_requests;
+create policy access_requests_admin_update on public.access_requests for update to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists invitations_admin_manage on public.invitations;
+create policy invitations_admin_manage on public.invitations for all to authenticated using (private.is_admin_aal2_self()) with check (private.is_admin_aal2_self());
+drop policy if exists audit_admin_select on public.audit_events;
+create policy audit_admin_select on public.audit_events for select to authenticated using (private.is_admin_aal2_self());
+drop policy if exists audit_admin_insert on public.audit_events;
+create policy audit_admin_insert on public.audit_events for insert to authenticated with check (private.is_admin_aal2_self());
+revoke all on function private.current_profile_active(uuid), private.is_admin_aal2(uuid), private.can_access_site(uuid,uuid), private.can_view_org(uuid,uuid) from public, anon, authenticated;

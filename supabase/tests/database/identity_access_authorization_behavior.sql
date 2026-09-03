@@ -1,0 +1,10 @@
+begin;
+select plan(6);
+select has_function('private','current_profile_active_self', ARRAY[]::text[]);
+select has_function('private','is_admin_aal2_self', ARRAY[]::text[]);
+select has_function('private','can_access_site_self', ARRAY['uuid']);
+select has_function('private','can_view_org_self', ARRAY['uuid']);
+select has_function('private','can_view_partner_org_self', ARRAY['uuid']);
+select ok(not has_function_privilege('authenticated','private.current_profile_active(uuid)','execute'),'legacy helper execute revoked');
+select * from finish();
+rollback;

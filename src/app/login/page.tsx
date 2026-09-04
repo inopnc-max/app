@@ -1,1 +1,2 @@
-export default function LoginPage(){return <main><h1>로그인</h1><p>인증이 필요합니다.</p></main>}
+'use client'; import {createClient} from '@/core/database/supabase/browser'; import {AppButton} from '@/design-system'; import {useState} from 'react';
+export default function Login(){const [busy,setBusy]=useState(false);async function kakao(){setBusy(true);const c=createClient();if(!c)return;await c.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:`${window.location.origin}/auth/callback`}});setBusy(false);}return <main style={{maxWidth:420,margin:'80px auto',padding:'0 16px'}}><h1>INOPNC</h1><p>안전한 업무 계정으로 로그인하세요.</p><AppButton onClick={kakao} disabled={busy}>카카오로 계속하기</AppButton><p><a href="/login/admin">관리자 로그인</a></p></main>}

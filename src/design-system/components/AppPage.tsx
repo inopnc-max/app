@@ -1,1 +1,1 @@
-export function AppPage({children,persona,wide=false}:{children:React.ReactNode;persona?:string;wide?:boolean}){return <main data-persona={persona} className="container" style={{maxWidth:wide?'1256px':'920px',paddingBlock:32}}>{children}</main>}
+export function AppPage({children,persona,width='read'}:{children:React.ReactNode;persona?:string;width?:'form'|'read'|'wide'}){const max=width==='form'?560:width==='wide'?1256:920;return <main data-persona={persona} className="container" style={{maxWidth:max,paddingBlock:32}}>{children}</main>}

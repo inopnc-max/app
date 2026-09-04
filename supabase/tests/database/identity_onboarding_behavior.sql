@@ -1,0 +1,15 @@
+begin;
+select plan(11);
+select has_function('public','accept_internal_invitation',ARRAY['text']);
+select has_function('public','approve_partner_access_request',ARRAY['uuid','uuid','text','jsonb']);
+select has_function('public','reject_access_request',ARRAY['uuid','text']);
+select ok(has_table_privilege('authenticated','public.invitations','select'),'authenticated invitation privilege exists');
+select ok(has_function_privilege('authenticated','public.accept_internal_invitation(text)','execute'),'accept RPC granted');
+select ok(has_function_privilege('authenticated','public.approve_partner_access_request(uuid,uuid,text,jsonb)','execute'),'approve RPC granted');
+select ok(has_function_privilege('authenticated','public.reject_access_request(uuid,text)','execute'),'reject RPC granted');
+select ok(not has_function_privilege('anon','public.accept_internal_invitation(text)','execute'),'anon cannot accept');
+select ok(not has_function_privilege('public','public.approve_partner_access_request(uuid,uuid,text,jsonb)','execute'),'public cannot approve');
+select ok(exists(select 1 from pg_constraint where conname='invitations_internal_target_check'),'internal target constraint exists');
+select ok((select relrowsecurity from pg_class where oid='public.access_requests'::regclass),'access request RLS remains enabled');
+select * from finish();
+rollback;

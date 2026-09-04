@@ -1,2 +1,1 @@
-import {requireAdminAal2} from '@/core/auth/guards';
-export default async function AdminPage(){await requireAdminAal2();return <main><h1>관리자</h1></main>}
+import {requireAdminAal2} from '@/core/auth/guards';import {AppCard,AppPage} from '@/design-system';export default async function AdminPage(){await requireAdminAal2();return <AppPage persona="admin" width="read"><h1>관리자</h1><p>사용자 접근과 초대를 관리합니다.</p><div className="grid"><AppCard><h2>내부 사용자 초대</h2><a href="/admin/invitations">초대 관리</a></AppCard><AppCard><h2>파트너 접근 승인</h2><a href="/admin/access">요청 검토</a></AppCard></div></AppPage>}

@@ -1,0 +1,2 @@
+import 'server-only';import {createClient} from '@/core/database/supabase/server';
+export async function listInvitations(){const c=createClient();if(!c)throw new Error('unavailable');const {data,error}=await c.from('invitations').select('id,target_persona,target_hint,created_at,expires_at,accepted_at,revoked_at').order('created_at',{ascending:false});if(error)throw new Error('query failed');return data??[];}

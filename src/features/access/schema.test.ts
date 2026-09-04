@@ -1,0 +1,2 @@
+import {describe,expect,it} from 'vitest';import {partnerAccessRequestSchema,rejectionSchema} from './schema';
+describe('partner request validation',()=>{it('accepts valid optional contact',()=>{expect(partnerAccessRequestSchema.safeParse({name:'A',company:'C',job_title:'J'}).success).toBe(true);});it('requires fields and bounds reason',()=>{expect(partnerAccessRequestSchema.safeParse({company:'C',job_title:'J'}).success).toBe(false);expect(rejectionSchema.safeParse('').success).toBe(false);});});

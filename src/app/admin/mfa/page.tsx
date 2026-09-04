@@ -1,2 +1,2 @@
-import {requireAuthenticatedUser} from '@/core/auth/guards'; import {redirect} from 'next/navigation';
-export default async function MfaPage(){const c=await requireAuthenticatedUser();if(c.persona!=='admin')redirect('/account/forbidden');if(c.accountStatus!=='active')redirect(`/account/${c.accountStatus}`);if(c.aal==='aal2')redirect('/admin');return <main><h1>추가 인증</h1><p>관리자 인증 앱의 6자리 코드를 입력하세요.</p></main>}
+import {requireAuthenticatedUser} from '@/core/auth/guards';import {redirect} from 'next/navigation';import MfaClient from './MfaClient';
+export default async function MfaPage(){const c=await requireAuthenticatedUser();if(c.persona!=='admin')redirect('/account/forbidden');if(c.accountStatus!=='active')redirect(`/account/${c.accountStatus}`);if(c.aal==='aal2')redirect('/admin');return <MfaClient/>}

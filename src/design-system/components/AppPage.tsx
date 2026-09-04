@@ -1,0 +1,1 @@
+export function AppPage({children,persona,wide=false}:{children:React.ReactNode;persona?:string;wide?:boolean}){return <main data-persona={persona} className="container" style={{maxWidth:wide?'1256px':'920px',paddingBlock:32}}>{children}</main>}
